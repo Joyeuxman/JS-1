@@ -1,0 +1,30 @@
+.lgh-title{
+  line-height:32px;
+  padding: 4px;
+  border-radius: 5px;
+  background-color: orange;
+}
+.lgh-summary{
+  line-height:32px;
+  padding: 4px;
+  border-radius: 5px;
+  background-color: lightgreen;
+}
+.img_container{
+  display:inline-block;
+}
+.img_container_img{
+  margin-left: 20px;
+  width: 200px;
+  height: 200px;
+}
+.img_container_text{
+  position: relative;
+  top: -41px;
+  left:20px;
+  opacity: 0.3;
+  width:200px;
+  text-align: center;
+  border-radius: 5px;
+  background: red;
+}

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <link rel="stylesheet" href="./index.css">
+  <title>18-状态模式</title>
+</head>
+
+<body>
+  <p>
+    <span class="title">
+      状态模式：当一个对象的内部状态发生改变时，会导致其行为的改变，这看起来像是改变了对象。
+    </span>
+    <br>
+    <br>
+    <span class="advantage">好处：</span>
+    <ul>
+      <li class="advantage_desc">
+        可以减少代码中的条件判断语句，并且使每种判断情况独立存在，这样更方便管理，也可以进行组合。
+      </li>
+      <li class="advantage_desc">
+        解决条件分支之间的耦合问题。
+      </li>
+    </ul>
+
+  </p>
+  <script>
+    // 创建超级玛丽状态类
+    const MarryState = function () {
+      // 内部状态私有变量
+      let _currentState = {};
+      // 动作与状态方法映射
+      const states = {
+        jump: function () {
+          // 跳跃
+          console.log('jump');
+        },
+        move: function () {
+          // 移动
+          console.log('move');
+        },
+        shoot: function () {
+          // 射击
+          console.log('shoot');
+        },
+        squat: function () {
+          // 下蹲
+          console.log('squat');
+        },
+      };
+      // 动作控制类
+      const Action = {
+        // 改变状态方法
+        changeState: function () {
+          // 组合动作通过传递多个参数实现
+          const args = arguments;
+          // 重置内部状态
+          _currentState = {};
+          // 如果有动作则添加动作
+          if (args.length) {
+            // 遍历动作
+            for (let i = 0, len = args.length; i < len; i++) {
+              // 向内部状态中添加动作
+              _currentState[args[i]] = true;
+            }
+          }
+          // 返回动作控制类
+          return this;
+        }
+        // 执行动作
+        , goes: function () {
+          console.log('触发一次动作');
+          // 遍历内部状态保存的动作
+          for (let i in _currentState) {
+            // 如果该动作存在则执行
+            states[i] && states[i]();
+          }
+          return this;
+        }
+      }
+      // 返回接口方法change、goes
+      return {
+        change: Action.changeState,
+        goes: Action.goes,
+      }
+    }
+
+
+    /************************************测试代码**************************************/
+    // 创建一个超级玛丽(实例化一下这个状态类，这样不会受到别人的影响)
+    const marry = new MarryState();
+    marry
+      .change('jump', 'shoot')
+      .goes()
+      .goes()
+      .change('shoot')
+      .goes();
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <link rel="stylesheet" href="./index.css">
+  <title>25-迭代器模式</title>
+</head>
+
+<body>
+  <div class="lgh-learn">
+    <p>
+      <span class="lgh-title">
+        迭代器模式：在不暴露对象结构的同时，可以顺序地访问聚合对象内部的元素。
+      </span>
+    </p>
+    <P>
+      <span class="lgh-summary">
+        通过迭代器我们可以顺序地访问一个聚合对象中的每一个元素。在开发中，迭代器极大简化了代码的循环语句，使代码结构清晰紧凑， 然而这些简化了的循环语句实质上隐形地移到了迭代器中。当然用迭代器去处理一个对象时，我们只需提供处理的方法，而不必去关心对象的内部结构，
+        这也解决了对象的使用者和对象内部结构之间的耦合。当然迭代器的存在也为我们提供了操作对象的一个统一的接口。
+        <br>
+      </span>
+    </P>
+  </div>
+
+  <div class="lgh-test">
+    <ul id="container">
+      <li>111</li>
+      <li>222</li>
+      <li>333</li>
+      <li>444</li>
+    </ul>
+  </div>
+  <script>
+    // 迭代器
+    const Iterator = function (items, container) {
+      // 获取父容器，若container参数存在，并且可以获取该元素则获取，否则获取document
+      const _container = container && document.getElementById(container) || document;
+      // 获取元素
+      const _items = _container.getElementsByTagName(items);
+      // 获取元素长度
+      const _length = _items.length;
+      // 当前索引值 0
+      let _index = 0;
+      // 缓存原生数组的splice方法
+      const _splice = [].splice;
+      return {
+        //  获取第一个元素
+        first: function () {
+          _index = 0;
+          return _items[_index];
+        },
+        // 获取最后一个元素
+        last: function () {
+          _index = _length - 1;
+          return _items[_index];
+        },
+        // 获取前一个元素
+        // 判断这是元素是否是第一个，是的话返回空元素，并设置索引为0
+        pre: function () {
+          if (--_index > 0) {
+            return _items[_index];
+          } else {
+            _index = 0;
+            return null;
+          }
+        },
+        // 获取后一个元素
+        // 判断这个元素是否是最后一个，是的话则返回空元素，并设置索引值为length-1
+        next: function () {
+          if (++_index < _length) {
+            return _items[_index];
+          } else {
+            _index = _length - 1;
+            return null;
+          }
+        },
+        // 获取某一个元素
+        // 如果参数大于等于0则直接对length取模获取对应的元素并设置索引值，
+        // 否则对length取模后还要加上length才能获取相应的索引值，此时是从后向前索引元素
+        get: function (num) {
+          _index = num >= 0 ? num % _length : num % _length + _length;
+          return _items[_index];
+        },
+        // 对每一个元素执行某一个方法
+        dealEach: function (fn) {
+          // 第二个参数开始为回调函数中参数
+          const args = _splice.call(arguments, 1);
+          for (let i = 0; i < _length; i++) {
+            // 对元素执行回调函数
+            fn.apply(_items[i], args);
+          }
+        },
+        // 对某一个元素执行某一个方法
+        dealItem: function (num, fn) {
+          // 对元素执行回调函数
+          // 1.第三个参数开始为回调函数中参数，
+          // 2.通过this.get方法设置index索引值
+          fn.apply(this.get(num), _splice.call(arguments, 2));
+        },
+        // 排他方式处理某一个元素
+        exclusive: function (num, allFn, numFn) {
+          // 对所有元素执行回调函数
+          this.dealEach(allFn);
+          // 如果num类型为数组
+          if (Object.prototype.toString.call(num) === '[object Array]') {
+            for (let i = 0, len = num.length; i < len; i++) {
+              // 分别处理数组中每一个元素
+              this.dealItem(num[i], numFn);
+            }
+          } else {
+            // 处理第num个元素
+            this.dealItem(num, numFn);
+          }
+        }
+      }
+    }
+
+    // 数组迭代器
+    const eachArray = function (arr, fn) {
+      for (let i = 0, len = arr.length; i < len; i++) {
+        // 依次执行回调函数，注意回调函数中传入的参数第一个为索引，第二个为该索引对应的值
+        if (fn.call(arr[i], i, arr[i]) === false) {
+          break;
+        }
+      }
+    }
+
+    // 对象迭代器
+    const eachObject = function (obj, fn) {
+      for (let i in obj) {
+        // 依次执行回调函数，注意回调函数中传入的参数第一个为属性，第二个为该属性对应的值
+        if (fn.call(obj[i], i, obj[i]) === false) {
+          break;
+        }
+      }
+    }
+
+    // 同步变量迭代取值器
+    const AGetter = function (obj, key) {
+      // 如果不存在A则返回未定义
+      if (!obj) {
+        return undefined;
+      }
+      let result = obj;//获取同步变量A对象
+      key = key.split('.');//解析属性层析序列
+      // 迭代同步变量A对象属性
+      for (let i = 0, len = key.length; i < len; i++) {
+        // 如果第i层属性存在对应的值则迭代该属性值
+        if (result[key[i]] !== undefined) {
+          result = result[key[i]];
+        } else {
+          // 如果不存在则返回未定义
+          return undefined;
+        }
+      }
+      return result;
+    }
+
+    // 同步变量迭代赋值器
+    const ASetter = function (key, value) {
+      // 如果不存在A则返回未定义
+      if (!A) {
+        return undefined;
+      }
+      let result = A;//获取同步变量A对象
+      key = key.split('.');//解析属性层次序列
+      let i = 0;
+      // 迭代同步变量A对象属性
+      for (len = key.length; i < len; i++) {
+        // 如果第i层属性对应的值不存在，则定义为对象
+        if (result[key[i]] === undefined) {
+          result[key[i]] = {};
+        }
+        // 如果第i层属性对应的值不是对象Object的一个实例，则抛出错误
+        if (!(result[key[i]] instanceof Object)) {
+          throw new Error('A.' + key.splice(0, i + 1).join('.') + ' is not Object');
+          return false;
+        }
+        // 迭代该层属性值
+        result = result[key[i]];
+      }
+      // 返回设置成功的属性值
+      return result[key[i - 1]] = value;
+    }
+
+
+    // 分支循环嵌套问题
+    window.onload = function () {
+      return;
+      const canvas = document.getElementsByTagName('canvas')[0];//获取画布
+      const img = document.images[0];//获取图片
+      const width = (canvas.width = img.width * 2) / 2;//获取并设置宽度
+      const height = canvas.height = img.height;//获取并设置高度
+      const ctx = canvas.getContext('2d');//获取渲染上下文
+      ctx.drawImage(img, 0, 0);//绘制图片
+      // 绘制特效图片
+      // t-->特效类型   x-->x坐标   y-->y坐标
+      // w-->宽度       h-->高度    a-->透明度
+      function dealImage(t, x, y, w, h, a) {
+        // 获取画布图片数据
+        const canvasData = ctx.getImageData(x, y, w, h);
+        // 获取像素数据
+        const data = canvasData.data;
+        // 遍历循环像素数据(4个数据表示一个像素点数据，分别代表红色、绿色、蓝色、透明度)
+        for (let i = 0, len = data.length; i < len; i += 4) {
+          switch (t) {
+            // 红色滤镜  将绿色与蓝色取值为0
+            case 'red':
+              data[i + 1] = 0;
+              data[i + 2] = 0;
+              data[i + 3] = a;
+              break;
+            // 绿色滤镜  将红色与蓝色取值为0
+            case 'green':
+              data[i] = 0;
+              data[i + 2] = 0;
+              data[i + 3] = a;
+              break;
+            // 蓝色滤镜  将绿色与红色取值为0
+            case 'blue':
+              data[i] = 0;
+              data[i + 1] = 0;
+              data[i + 3] = a;
+              break;
+            // 平均值灰色滤镜  取三色平均值
+            case 'red':
+              const num = parseInt((data[i] + data[i + 1] + data[i + 2]) / 3);
+              data[i] = num;
+              data[i + 1] = num;
+              data[i + 2] = num;
+              data[i + 3] = a;
+              break;
+            // 其他方案
+          }
+        }
+        // 绘制处理后的图片
+        ctx.pushImageData(canvasData, width + x, y);
+      };
+      // 
+      function _dealImage(t, x, y, w, h, a) {
+        // 获取画布图片数据
+        const canvasData = ctx.getImageData(x, y, w, h);
+        // 获取像素数据
+        const data = canvasData.data;
+        // 状态模式封装算法
+        const Deal = function () {
+          const method = {
+            // 默认类型---平均灰度特效
+            'default': function (i) {
+              return method['gray'](i);
+            },
+            // 红色特效
+            'red': function (i) {
+              data[i + 1] = 0;
+              data[i + 2] = 0;
+              data[i + 3] = a;
+            },
+            // 平均灰色特效
+            'gray': function (i) {
+              // 取三色平均值
+              const num = parseInt((data[i] + data[i + 1] + data[i + 2]) / 3);
+              data[i] = num;
+              data[i + 1] = num;
+              data[i + 2] = num;
+              data[i + 3] = a;
+            }
+          }
+          // 主函数，通过给定类型返回对应滤镜算法
+          return function (type) {
+            return method[type] || method['default'];
+          }
+        }();
+        // 迭代器处理数据
+        function eachData(fn) {
+          for (let i = 0, len = data.length; i < len; i += 4) {
+            // 处理一组像素数据
+            fn(i);
+          }
+        }
+        // 处理数据
+        eachData(Deal(t));
+        ctx.pushImageData(canvasData, width + x, y);
+      }
+      // 为图片添加特效
+      dealImage('gray', 0, 0, width, height, 255);
+      dealImage('gray', 100, 50, 300, 200, 100);
+      dealImage('gray', 150, 100, 200, 100, 255);
+    }
+
+
+    /************************************测试代码**************************************/
+    const demo = new Iterator('li', 'container');
+    console.log(demo.first());
+    console.log(demo.last());
+    console.log(demo.pre());
+    console.log(demo.next());
+    console.log(demo.get(2000));
+    demo.dealEach(function (text, color) {
+      this.innerHTML = text;
+      this.style.background = color;
+    }, 'test', 'pink');
+    // 排他思想处理第三个与第四个元素
+    demo.exclusive([2, 3], function () {
+      this.innerHTML = '被排除的';
+      this.style.background = 'red';
+    }, function () {
+      this.innerHTML = '选中的';
+      this.style.background = 'green';
+    })
+
+    const testArr = ['A', 'B', 'C', 'D'];
+    const testObj = { B: '百度', A: '阿里', T: '腾讯' };
+    eachArray(testArr, function (key, value) {
+      console.log(key, value);
+    })
+    eachObject(testObj, function (key, value) {
+      console.log(key, value);
+    })
+
+    // 同步变量
+    const A = {
+      // 所有用户共有
+      common: {},
+      // 客户端数据
+      client: {
+        user: {
+          username: '李光辉',
+          uid: '110',
+        },
+        // group:'',
+        group: [],
+      },
+      // 服务端数据
+      server: {},
+    }
+    console.log(AGetter(A, 'client.user.username'));
+    console.log(AGetter(A, 'server.lang.local'));
+    console.log(ASetter('client.module.news.sports', 'on'));
+    console.log(ASetter('client.group.news.hobby', 'ball'));
+    console.log(A)
+
+  </script>
+</body>
+
+</html>

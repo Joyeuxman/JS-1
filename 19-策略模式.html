@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <link rel="stylesheet" href="./index.css">
+  <title>19-策略模式</title>
+</head>
+
+<body>
+  <p>
+    <span class="title">
+      策略模式：将定义的一组算法封装起来，使其相互之间可以替换。封装的算法具有一定的独立性，不会随客户端变化而变化。
+    </span>
+    <br>
+    <br>
+    <span class="advantage">好处：</span>
+    <ul>
+      <li class="advantage_desc">
+        jQuery动画时的缓冲函数就是运用的策略模式实现的。
+      </li>
+    </ul>
+
+  </p>
+  <script>
+    // 价格策略对象
+    const PriceStrategy = function () {
+      // 内部算法对象
+      const strategy = {
+        // 100返30
+        return30: function (price) {
+          // +price 转化为数字类型
+          return +price + parseInt(price / 100) * 30;
+        },
+        // 100返50
+        return50: function (price) {
+          // +price 转化为数字类型
+          return +price + parseInt(price / 100) * 50;
+        },
+        // 9折
+        percent90: function (price) {
+          // JS在处理小数乘除法有bug,故运算前转化为整数
+          return price * 100 * 90 / 10000;
+        },
+        // 8折
+        percent90: function (price) {
+          return price * 100 * 80 / 10000;
+        },
+        // 5折
+        percent90: function (price) {
+          return price * 100 * 50 / 10000;
+        },
+      }
+      // 策略算法调用接口
+      return function (algorithm, price) {
+        // 如果算法存在，则调用算法，否则返回false
+        return strategy[algorithm] && strategy[algorithm](price);
+      }
+    }();
+
+
+    // 表单正则校验策略对象
+    const InputStrategy = function () {
+      const strategy = {
+        // 是否为空 
+        notNull: function (value) {
+          // 正则语法 \s 任何空白字符，包括空格、制表符、换页符。
+          return /\s+/.test(value) ? '请输入内容' : '';
+        },
+        // 是否是一个数字
+        number: function (value) {
+          return /^[0-9]+(\.[0-9]+)?$/.test(value) ? '' : '请输入数字';
+        },
+        // 是否为本地电话
+        phone: function (value) {
+          return /^\d{3}\-\d{8}$|^\d{4}-\d{7}$/.test(value) ? '' : '请输入正确的电话号码格式,如012-12345678或者0123-1234567';
+        }
+      }
+      return {
+        // 验证接口type算法 value表单值
+        check: function (type, value) {
+          // 去除首尾空白符
+          value = value + '';
+          value = value.replace(/^\s+|\s+$/g, '');
+          return strategy[type] ? strategy[type](value) : '没有该类型的检测方法';
+        },
+        // 添加策略
+        addStrategy: function (type, fn) {
+          strategy[type] = fn;
+        }
+
+      }
+    }
+
+    /************************************测试代码**************************************/
+    const inputStrategy = new InputStrategy();
+    inputStrategy.check('notNull', '');
+    inputStrategy.check('notNull', '我不是空白');
+    inputStrategy.check('number', 1.3);
+    inputStrategy.check('number', '1.3');
+    inputStrategy.check('phone', 012 - 12345678);
+    inputStrategy.check('phone', '012-12345678');
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <link rel="stylesheet" href="./index.css">
+  <title>20-职责链模式</title>
+</head>
+
+<body>
+  <p>
+    <span class="title">
+      职责链模式：解决请求的发送者与请求的接受着之间的耦合， 通过职责链上的多个对象对分解请求流程，实现请求在多个对象之间的传递，直到最后一个对象完成请求的处理。
+    </span>
+  </p>
+  <P>
+    <span class="summary">
+      职责链模式定义了请求的传递方向，通过多个对象对请求的传递，实现一个复杂的逻辑操作。 因此职责链模式将负责的需求颗粒度逐一实现每个对象分内的需求，并将请求顺序地传递。对于 职责链上的每一个对象俩说，它都可能是请求的发起者也可能是请求的接受者。通过这样的方式
+      不仅仅简化原型对象的复杂度，而且解决原请求的发起者与原请求的接受者之间的耦合。当然也 方便对每个阶段对象进行单元测试。同时对于中途插入的请求此模式依然使用，并可以顺利对 请求执行并产生结果。
+      <br> 
+      对于职责链上每一个对象不一定都能参与与请求的传递，有时会造成一丝资源的浪费，并且多个 对象参与请求的传递，这在代码调试时增加了调试成本。
+    </span>
+  </P>
+  <span class="advantage">好处：</span>
+  <ul>
+    <li class="advantage_desc">
+
+    </li>
+  </ul>
+
+  <input type="text">
+  <span class="span"></span>
+  <input type="text">
+  <input type="text">
+  <input type="text">
+  <script>
+    // 异步请求对象(简化版)
+    // data-->请求数据  dealType-->相应数据处理对象  dom-->事件源
+    const sendData = function (data, dealType, dom) {
+      // XHR对象 简化版本  IE另行处理
+      const xhr = new XMLHttpRequest();
+      // 请求路径
+      const url = 'getData.php?mod=userInfo';
+      xhr.onload = function (event) {
+        if ((xhr.status >= 200 && xhr.status < 300) || xhr.status == 304) {
+          dealData(xhr.responseText, dealType, dom);
+        } else {
+          console.log('请求失败');
+        }
+      }
+      // 拼接请求字符串
+      for (let i in data) {
+        url += '&' + i + '=' + data[i];
+      }
+      // 发送异步请求
+      xhr.open('get', url, true);
+      xhr.send(null);
+    }
+
+    // 处理响应数据
+    // data-->响应数据  dealType-->相应数据处理对象  dom-->事件源
+    const dealData = function (data, dealType, dom) {
+      // 对象toString方法简化引用
+      const dataType = Object.prototype.toString.call(data);
+      // 判断相应数据处理对象
+      switch (dealType) {
+        // 输入框提示功能
+        case 'sug':
+          // 如果数据为数组
+          if (dataType === '[object Array]') {
+            // 创建提示框组件
+            return createSug(data, dom);
+          }
+          // 将相应的对象数据转化为数组
+          if (dataType === '[object Object]') {
+            const newData = [];
+            for (let i in data) {
+              newData.push(data[i]);
+            }
+            // 创建提示框组件
+            return createSug(newData, dom);
+          }
+          // 将其他数据转化为数组
+          return createSug([data], dom);
+          break;
+        case 'validate':
+          // 创建校验组件
+          return createValidataResult(data, dom);
+          break;
+      }
+    }
+
+    // 创建提示框组件
+    // data-->响应数据   dom-->事件源
+    const createSug = function (data, dom) {
+      let html = '';
+      // 拼接每一条提示语句
+      for (let i = 0, len = data.length; i < len; i++) {
+        html += '<li>' + data[i] + '</li>';
+      }
+      // 显示提示框
+      dom.parentNode.getElementsByTagName('ul')[0].innerHTML = html;
+    }
+
+    // 创建校验组件
+    // data-->响应数据   dom-->事件源
+    const createValidataResult = function (data, dom) {
+      // 显示校验结果
+      dom.parentNode.getElementsByClassName('span')[0].innerHTML = data;
+    }
+
+    /************************************测试代码**************************************/
+    const input = document.getElementsByTagName('input');
+    dealData('用户名不正确', 'validate', input[0]);
+    dealData(123, 'sug', input[1]);
+    dealData(['百度', '阿里', '腾讯'], 'sug', input[2]);
+    dealData({
+      baidu: "百度",
+      ali: '阿里',
+      tengxun: '腾讯',
+    }, 'sug', input[3]);
+
+
+  </script>
+</body>
+
+</html>

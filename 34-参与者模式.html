@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <link rel="stylesheet" href="./index.css">
+  <title>34-参与者模式</title>
+</head>
+
+<body>
+  <div class="lgh-learn">
+    <p>
+      <span class="lgh-title">
+        参与者模式：通过对多个异步进程监听，来触发未来发生的动作。
+      </span>
+    </p>
+    <P>
+      <span class="lgh-summary">
+        等待者模式意在处理耗时比较长的操作，比如canvas中遍历并操作一张大图片中的每一个像素点、 定时器操作、异步请求等。等待者模式为我们提供了一个抽象的非阻塞的解决方案，通过创建Primise对象， 对耗时逻辑的未来状态变化返回一个响应，通过在等待者对象内部捕获这些响应信息，为耗时较长的操作提供了回调方案，使我们可以捕获耗时操作完成时或中断时的状态并执行相应的回调方案。
+        <br>
+      </span>
+    </P>
+  </div>
+
+  <div class="lgh-test">
+
+  </div>
+  <script>
+    // 等待对象
+    const Waiter = function () {
+      // 注册了的等待对象容器
+      let dfd = [];
+      // 成功回调方法容器
+      let doneArr = [];
+      // 失败回调方法容器
+      let failArr = [];
+      // 缓存Array方法slice
+      const slice = Array.prototype.slice;
+      // 保存当前等待者对象
+      const that = this;
+
+      // 监控对象类
+      const Primise = function () {
+        // 监控对象是否解决成功状态
+        this.resolved = false;
+        // 监控对象是都解决失败状态
+        this.rejected = false;
+      }
+
+      // 监控对象类原型方法
+      Primise.prototype = {
+        // 解决成功
+        resolve: function () {
+          // 设置当前监控对象解决成功
+          this.resolved = true;
+          // 如果没有监控对象则取消执行
+          if (!dfd.length) {
+            return;
+          }
+          // 遍历所有注册了的监控对象
+          for (let i = dfd.length - 1; i >= 0; i--) {
+            // 如果有任意一个监控对象没有被解决或者解决失败则返回
+            if (dfd[i] && !dfd[i].resolved || dfd[i].rejected) {
+              return;
+            }
+            // 清除监控对象
+            dfd.splice(i, 1);
+          }
+          // 执行解决成功回调方法
+          _exec(doneArr);
+        },
+        // 解决失败
+        reject: function () {
+          // 设置当前监控对象解决失败
+          this.rejected = true;
+          // 如果没有监控对象则取消执行
+          if (!dfd.length) {
+            return;
+          }
+          // 清空所有监控对象
+          dfd.splice(0);
+          // 执行解决失败回调函数
+          _exec(failArr);
+        }
+      }
+
+      // 创建监控对象
+      that.Deferred = function () {
+        return new Primise();
+      }
+
+      // 回调执行方法
+      function _exec(arr) {
+        for (let i = 0, len = arr.length; i < len; i++) {
+          try {
+            arr[i] && arr[i]();
+          } catch (e) {
+            if (e) {
+              console.log(e);
+            }
+          }
+        }
+      }
+
+      // 监控异步方法  参数：监控对象
+      that.when = function () {
+        // 设置监控对象
+        dfd = slice.call(arguments);
+        // 获取监控对象数组长度
+        let i = dfd.length;
+        // 向前遍历监控对象，最后一个监控对象的索引值为length-1
+        for (--i; i >= 0; i--) {
+          // 如果不存在监控对象，或者监控对象已经解决，或者不是监控对象
+          if (!dfd || dfd[i].resolved || dfd[i].rejected || !dfd[i] instanceof Primise) {
+            // 清理内存  清除当前监控对象
+            dfd.splice(i, 1);
+          }
+        }
+        // 返回等待着对象
+        return that;
+      }
+
+      // 解决成功回调函数添加方法
+      that.done = function () {
+        // 向成功回调函数容器中添加回调函数
+        doneArr = doneArr.concat(slice.call(arguments));
+        // 返回等待者对象
+        return that;
+      }
+
+      // 解决失败回调函数添加方法
+      that.fail = function () {
+        // 向失败回调函数容器中添加回调函数
+        failArr = failArr.concat(slice.call(arguments));
+        // 返回等待者对象
+        return that;
+      }
+    }
+
+
+    // // 长轮询
+    // (function getAjaxData() {
+    //   // 保存当前函数
+    //   const fn = arguments.callee();
+    //   setTimeout(function () {
+    //     $.get('./test.php', function () {
+    //       console.log('轮询一次');
+    //       // 再一次轮询
+    //       fn();
+    //     })
+    //   }, 5000)
+    // })();
+
+
+    /************************************测试代码**************************************/
+    const waiter = new Waiter();
+    // 第一个彩蛋，5秒后停止
+    const first = function () {
+      // 创建监听对象
+      const dfd = waiter.Deferred();
+      setTimeout(function () {
+        console.log('first finish');
+        // 发布解决成功消息
+        dfd.resolve();
+      }, 5000);
+      // 返回监听对象
+      return dfd;
+    }();
+
+    // 第二个彩蛋，10秒后停止
+    const second = function () {
+      // 创建监听对象
+      const dfd = waiter.Deferred();
+      setTimeout(function () {
+        console.log('second finish');
+        // 发布解决成功消息
+        dfd.resolve();
+      }, 10000);
+      // 返回监听对象
+      return dfd;
+    }();
+
+    waiter
+      .when(first, second)//监听两个彩蛋
+      .done(function () {//添加成功回调函数
+        console.log('success');
+      }, function () {
+        console.log('success again');
+      })
+      .fail(function () {//添加失败回调函数
+        console.log('fail');
+      })
+  </script>
+</body>
+
+</html>

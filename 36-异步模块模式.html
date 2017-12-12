@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="X-UA-Compatible" content="ie=edge">
+	<link rel="stylesheet" href="./index.css">
+	<title>36-异步模块模式</title>
+</head>
+
+<body>
+	<div class="lgh-learn">
+		<p>
+			<span class="lgh-title">
+				异步模块模式：请求发出后，继续其他业务逻辑，知道模块加载完成执行后续的逻辑，实现模块开发中对模块加载完成后的引用。
+			</span>
+		</p>
+		<P>
+			<span class="lgh-summary">
+				模块化开发不仅解决了系统的复杂性问题，而且减少了多人开发中变量、方法名被覆盖的问题。通过其强大的命名空间管理，使模块的结构更合理。 通过对模块的引用，提高了模块代码复用率。异步模块模式在此基础上增加了模块依赖，使开发者不必担心某些方法尚未加载或未加载完全造成的无法使用问题。
+				异步加载部分功能也可将更多首屏不必要的功能剥离出去，减少首屏加载成本。
+				<br>
+			</span>
+		</P>
+	</div>
+
+	<div class="lgh-test">
+		<div id="demo">demo</div>
+	</div>
+	<script>
+		// 向闭包中传入模块管理器对象F(~屏蔽压缩文件时，前面漏写，报错)
+		~(function (F) {
+			// 模块缓存器 存储已创建模块
+			const moduleCache = {};
+
+			// 获取文件路径
+			getUrl = function (moduleName) {
+				return String(moduleName).replace(/\.js$/g, '') + '.js';
+			}
+
+			// 加载脚本文件
+			loadScript = function (src) {
+				const _script = document.createElement('script');
+				_script.type = 'text/JavaScript';
+				_script.charset = 'UTF-8';
+				_script.async = true;
+				_script.src = src;
+				document.getElementsByTagName('head')[0].appendChild(_script);
+			}
+
+			// 异步加载依赖模块所在文件
+			// moduleName-->模块路径(id)   callback-->模块加载完成后回调函数
+			loadModule = function (moduleName, callback) {
+				// 依赖模块
+				let _module;
+				// 如果依赖模块被要求加载过
+				if (moduleCache[moduleName]) {
+					// 获取该模块信息
+					_module = moduleCache[moduleName];
+					// 如果模块加载完成
+					if (_module.status === 'loaded') {
+						// 执行模块加载完成回调函数
+						setTimeout(callback(_module.exports), 0);
+					} else {
+						// 缓存该模块所处文件加载完成回调函数
+						_module.onload.push(callback);
+					}
+				} else {
+					// 模块第一次被依赖引用
+					// 缓存该模块初始化信息
+					moduleCache[moduleName] = {
+						moduleName: moduleName,//模块ID
+						status: 'loading',//模块对应文件加载状态(默认加载中)
+						exports: null,//模块接口
+						onload: [callback],//模块对应文件加载完成回调函数缓冲器
+					}
+					// 加载模块对应文件
+					loadScript(getUrl(moduleName));
+				}
+			}
+
+
+			// 设置模块并执行模块构造函数
+			// moduleName-->模块路径(id)   params-->依赖模块   callback-->模块构造函数
+			setModule = function (moduleName, params, callback) {
+				// 模块容器，模块文件加载完成回调函数
+				let _module, fn;
+				// 如果模块被调用过
+				if (moduleCache[moduleName]) {
+					// 获取模块
+					_module = moduleCache[moduleName];
+					// 设置模块已经加载完成
+					_module.status = 'loaded';
+					// 矫正模块接口
+					_module.exports = callback ? callback.apply(_module, params) : null;
+					// 执行模块文件加载完成回调函数
+					while (fn = _module.onload.shift()) {
+						fn(_module.exports);
+					}
+				} else {
+					// 模块不存在(匿名模块),则直接执行构造函数
+					callback && callback.apply(null, params);
+				}
+			}
+		})((function () {
+			// 创建模块管理器对象F,并保存在全局作用域中
+			return window.F = {};
+		})())
+
+		// 创建或调用模块方法
+		// url-->模块url   modDeps-->依赖模块   modCallback-->模块主函数
+		F.module = function (url, modDeps, modCallback) {
+			// 将参数转化为数组
+			const args = [].slice.call(arguments);
+			const callback = args.pop();
+			// 获取依赖模块(紧邻回调函数参数，且数据类型为数组)
+			const deps = (args.length && args[args.length - 1] instanceof Array) ? args.pop() : [];
+			// 该模块定义url(模块ID)
+			url = args.length ? args.pop() : null;
+			// 依赖模块序列
+			const param = [];
+			// 未加载的依赖模块数量统计
+			let depsCount = 0;
+			// 依赖模块序列中索引值
+			let i = 0;
+			// 获取模块序列长度
+			let len;
+
+			// 获取依赖模块长度
+			if (len = deps.length) {
+				// 遍历依赖模块
+				while (i < len) {
+					// 闭包保存i
+					(function (i) {
+						// 增加未加载依赖模块数量统计
+						depsCount++;
+						// 异步加载依赖模块
+						loadModule(deps[i], function (mod) {
+							// 依赖模块序列中添加依赖模块接口引用
+							param[i] = mod;
+							// 依赖模块加载完成，依赖模块数量统计减一
+							depsCount--;
+							// 如果依赖模块全部加载完成
+							if (depsCount === 0) {
+								// 在模块缓存器中矫正该模块，并执行构造函数
+								setModule(url, param, callback);
+							}
+						})
+					})(i);
+					// 遍历下一依赖模块
+					i++;
+				}
+			} else {
+				// 无依赖模块，直接执行回调函数
+				setModule(url, [], callback);
+			}
+		}
+
+		/************************************测试代码**************************************/
+
+		F.module(['./lib/event', './lib/dom'], function (events, dom) {
+			events.on('demo', 'click', function () {
+				dom.html('demo', 'success');
+			})
+		})
+
+	</script>
+</body>
+
+</html>

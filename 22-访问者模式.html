@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <link rel="stylesheet" href="./index.css">
+  <title>22-访问者模式</title>
+</head>
+
+<body>
+  <div class="lgh-learn">
+    <p>
+      <span class="lgh-title">
+        访问者模式：针对于对象结构中的元素，定义在不改变该对象的前提下访问结构中元素的新方法。
+      </span>
+    </p>
+    <P>
+      <span class="lgh-summary">
+        访问者模式解决数据与数据的操作方法之间的耦合，将数据的操作方法独立于数据，使其可以自由化演变。 因此访问者更适合于那些数据稳定，但是数据的操作方法易变的环境下。因此当操作环境改变时， 可以自由修改操作方法以适应操作环境，而不用修改原数据，实现操作方法的拓展。同时对于同一个数据，它可以被多个对象所访问，这极大增加了操作数据的灵活性。
+        <br>
+      </span>
+    </P>
+  </div>
+
+  <div class="lgh-test">
+    <div id="demo">test</div>
+    <button id="btn">点我试试</button>
+    <span id="test"></span>
+  </div>
+  <script>
+    // 获取元素对象
+    function $(id) {
+      return document.getElementById(id);
+    }
+
+    // 不含IE版绑定事件
+    const bindEvent = function (dom, type, fn) {
+      if (dom.addEventListener) {
+        dom.addEventListener(type, fn, false);
+      } else if (dom.attachEvent) {
+        dom.attachEvent('on' + type, fn);
+      } else {
+        dom['on' + type] = fn;
+      }
+    }
+
+    // 含IE版绑定事件
+    const bindIEEvent = function (dom, type, fn, data) {
+      data = data || {};
+      if (dom.addEventListener) {
+        dom.addEventListener(type, function (e) {
+          fn.call(dom, e, data);
+        })
+      } else if (dom.attachEvent) {
+        dom.attachEvent('on' + type, function (e) {
+          fn.call(dom, e, data);
+        })
+      }
+    }
+
+    // 访问器
+    const Visitor = (function () {
+      return {
+        // 截取方法
+        splice: function () {
+          // splice方法参数，从原参数的第二个参数开始算起
+          const args = Array.prototype.splice.call(arguments, 1);
+          // 对第一个参数对象执行splice方法
+          // ???断点调试中，如果断点调试时间过长，会导致return返回的值不一致
+          // 初步判定是由于splice方法会改变原数组
+          return Array.prototype.splice.apply(arguments[0], args);
+        },
+        // 追加数据方法
+        push: function () {
+          // 强化类数组对象，使其拥有length属性
+          const len = arguments[0].length || 0;
+          // 添加的数据从参数的第二个算起
+          const args = this.splice(arguments, 1);
+          // 校正length属性
+          arguments[0].length = len + arguments.length - 1;
+          // 对第一个参数对象执行push方法
+          return Array.prototype.push.apply(arguments[0], args);
+        },
+        // 弹出最后一次添加的元素
+        pop: function () {
+          // 对第一个参数对象执行pop方法
+          return Array.prototype.pop.apply(arguments[0]);
+        }
+      }
+    })();
+
+    /************************************测试代码**************************************/
+
+    const demo = document.getElementById('demo');
+    bindEvent(demo, 'click', function () {
+      this.style.background = 'red';
+    })
+    bindIEEvent($('btn'), 'click', function (e, d) {
+      $('test').innerHTML = '事件:' + e.type + ' 文本:' + d.text + ' 标签:' + this.tagName;
+    }, { text: 'test demo' })
+
+    const a = new Object();
+    console.log(a.length);
+    Visitor.push(a, 1, 2, 3, 4);
+    Visitor.pop(a);
+    Visitor.splice(a, 2);
+    console.log(a.length);
+    console.log(a);
+  </script>
+</body>
+
+</html>

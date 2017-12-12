@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <link rel="stylesheet" href="./index.css">
+  <title>35-同步模块模式</title>
+</head>
+
+<body>
+  <div class="lgh-learn">
+    <p>
+      <span class="lgh-title">
+        模块化：将复杂的系统分解成高聚合、低耦合的模块，是系统开发变得可控、可维护、可拓展，提高模块的复用率。
+        <br> 同步模块模式-SMD：请求发出后，无论模块是否存在，立即执行后续的逻辑，实现模块开发中对模块的立即引用。
+      </span>
+    </p>
+    <P>
+      <span class="lgh-summary">
+        模块化开发即是以分而治之的思想，实现对复杂系统的分解，使系统随着其功能的增加而变得可控、可扩展、可维护。这就要求我们对模块细化。 随着系统功能的增加，模块的数量也随之增加。模块开发的成本随之减少，但是模块的接口数量却随之增加，接口的使用成本和开发与维护成本也随之增加，所以合理的模块分割显得尤为重要。
+        <br> 模块化开发是一种对系统的分解，但使用时又像是以组合模式对模块的组合。因此这也使得系统中的问题一般出现在局部，使得开发人员处理相应模块即可，而不用顾虑整个系统。 因此相对于整个复杂的系统，对于局部模块的改造、优化甚至替换所需要成本要小得多。组合的灵活性也使得我们可以实现更复杂、多样化的功能。
+        <br> 在Web前端，实现的模块化开发往往创建了大量的闭包，这会在内存中占用大量的资源得不到释放，这是一种资源的浪费，但相对于解决的问题来说，这种开销是值得的。
+        <br> 同步模块模式是模块开发的一种最简单的形式，这种模式使得依赖的模块无论加载，无论有无，模块创建即执行，这就要求依赖的模块必然是创建过(define)的。 同步模块模式无法处理异步加载的模块，因此浏览器异步加载文件的环境模式限制了同步模块模式的应用。不过对于服务器端如nodejs等，他们的文件都存储在本地，
+        因此同步模块模式更适用。
+      </span>
+    </P>
+  </div>
+
+  <div class="lgh-test">
+    <div id="test">test</div>
+  </div>
+  <script>
+    // 定义模块管理器单体对象
+    var F = F || {};
+
+    // 定义模块方法(理论上，模块方法应放在闭包中实现，可以屏蔽内部信息，这里我们为让读者能够看明白，我们忽略此步骤)
+    // str-->模块路由   fn-->模块方法
+    F.define = function (str, fn) {
+      // 解析模块路由
+      let parts = str.split('.');
+      // old当前模块的祖父模块，parent当前模块父模块
+      // 如果在闭包中，为了屏蔽对模块直接访问，建议将模块添加给闭包内部私有变量
+      let old = parent = this;
+      // i 模块层级  len 模块层级长度
+      let i = len = 0;
+      // 如果第一个模式是模块管理器单体对象，则移除
+      if (parts[0] === 'F') {
+        parts = parts.slice(1);
+      }
+      // 屏蔽对define与module模块方法的重写
+      if (parts[0] === 'define' || parts[0] === 'module') {
+        return;
+      }
+      // 遍历路由模块并定义每层模块
+      for (len = parts.length; i < len; i++) {
+        // 如果父模块中不存在当前模块
+        if (typeof parent[parts[i]] === 'undefined') {
+          // 声明当前模块
+          parent[parts[i]] = {};
+        }
+        // 缓存下一层的祖父模块
+        old = parent;
+        // 缓存下一层级父模块
+        parent = parent[parts[i]];
+      }
+      // 如果给定模块方法则定义该模块方法
+      if (fn) {
+        // 此时i等于parts.length,故减一
+        old[parts[--i]] = fn();
+      }
+      // 返回模块管理器单体对象
+      return this;
+    }
+
+    // 模块调用方法
+    F.module = function () {
+      // 将参数转化为数组
+      const args = [].slice.call(arguments);
+      // 获取回调执行函数
+      const fn = args.pop();
+      // 获取依赖模块，如果args[0]是数组，则依赖模块为args[0].否则依赖模块为arg
+      const parts = args[0] && args[0] instanceof Array ? args[0] : args;
+      // 依赖模块列表
+      const modules = [];
+      // 模块路由
+      let modIDs = '';
+      // 依赖模块索引
+      let i = 0,
+        // 依赖模块长度
+        ilen = parts.length,
+        // 父模块，模块路由层级索引，模块路由层级长度
+        parent, j, jlen;
+      // 遍历依赖模块
+      while (i < ilen) {
+        // 如果是模块路由
+        if (typeof parts[i] === 'string') {
+          // 设置当前模块父对象(F)
+          parent = this;
+          // 解析模块路由,并屏蔽掉模块父对象
+          modIDs = parts[i].replace(/^F./, '').split('.');
+          // 遍历模块路由层级
+          for (j = 0, jlen = modIDs.length; j < jlen; j++) {
+            // 重置父模块
+            parent = parent[modIDs[j]] || false;
+          }
+          // 将模块添加到依赖模块列表中
+          modules.push(parent);
+        } else {
+          // 如果是模块对象
+          // 直接加入依赖模块列表中
+          modules.push(parts[i])
+        }
+        // 去下一个依赖模块
+        i++;
+      }
+      // 执行回调函数
+      fn.apply(null, modules);
+    }
+    /************************************测试代码**************************************/
+
+    // F.string模块
+    F.define('string', function () {
+      // 接口方法
+      return {
+        // 清除字符串两边空白
+        trim: function (str) {
+          return str.replace(/^\s+|\s+$/g, '');
+        }
+      }
+    })
+    /*在真正的模块开发中，是不允许这样直接调用的，有两点原因，技术上，模块通常保存在闭包内部的私有变量，而不会保存在F上，
+    因此是获取不到的。而我们这里简化了闭包，也为测试方便，因此直接引用。其次，类似如下调用时不符合模块化开发规范的。*/
+    console.log(F.string.trim(' 测 试用例 '));
+
+    //F.dom模块
+    F.define('dom', function () {
+      // 简化获取元素方法(重复获取可被替代，此设计用于演示模块添加)
+      const $ = function (id) {
+        $.dom = document.getElementById(id);
+        // 返回构造函数对象
+        return $;
+      }
+      // 获取或者设置元素内容
+      $.html = function (html) {
+        if (html) {
+          this.dom.innerHTML = html;
+          return this;
+        } else {
+          return this.dom.innerHTML;
+        }
+      }
+      return $;
+    })
+    F.dom('test').html();
+
+    // 注意，此种添加方式之所以可行，是因为将模块添加到F对象上，模块化开发中只允许上面的添加方式
+    F.define('dom.addClass');
+    F.dom.addClass = function (type, fn) {
+      return function (className) {
+        // 如果不存在该类
+        if (!~this.dom.className.indexOf(className)) {
+          // 简单添加类
+          this.dom.className += '' + className;
+        }
+      }
+    }();
+    F.dom('test').addClass('_test');
+
+    // 引用dom模块与document对象(注意，依赖模块对象通常为已创建的模块对象)
+    F.module(['dom', document], function (dom, doc) {
+      // 通过dom模块设置元素内容
+      dom('test').html('new add!');
+      // 通过document设置body元素背景色
+      doc.body.style.background = 'white';
+    })
+  </script>
+</body>
+
+</html>
